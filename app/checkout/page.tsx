@@ -51,7 +51,7 @@ function CheckoutContent() {
       const data = (await response.json()) as { error?: string; order?: { orderId: string; productName: string; quantity: number; totalPrice: number } };
       if (!response.ok || !data.order) throw new Error(data.error || "We could not submit your order. Please try again.");
       const next = new URLSearchParams({ orderId: data.order.orderId, product: data.order.productName, quantity: String(data.order.quantity), total: String(data.order.totalPrice) });
-      router.push(`/thank-you?${next.toString()}`);
+      router.push(`/order-confirmed?${next.toString()}`);
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "We could not submit your order. Please try again.");
       setSubmitting(false);

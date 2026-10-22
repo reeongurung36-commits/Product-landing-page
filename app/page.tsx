@@ -69,9 +69,9 @@ export default function Home() {
         <div className="site-shell flex h-20 items-center justify-between">
           <Link href="/" className="font-display text-xl tracking-[0.34em] text-gold" aria-label="NOIRÉ home">NOIRÉ</Link>
           <nav className="hidden items-center gap-9 text-xs uppercase tracking-[0.18em] text-ivory/60 md:flex" aria-label="Primary navigation">
-            <a href="#story" className="transition hover:text-gold">The scent</a><a href="#reviews" className="transition hover:text-gold">Reviews</a><a href="#faq" className="transition hover:text-gold">FAQ</a>
+            <a href="#story" className="transition hover:text-gold">The scent</a><a href="#reviews" className="transition hover:text-gold">Reviews</a><a href="#faq" className="transition hover:text-gold">FAQ</a><Link href="/checkout" className="text-gold transition hover:text-[#f1d58b]">Checkout</Link>
           </nav>
-          <OrderLink quantity={1} className="!min-h-10 !px-5 !py-2 text-xs">Order now</OrderLink>
+          <OrderLink quantity={1} className="!min-h-10 !px-5 !py-2 text-xs">Checkout</OrderLink>
         </div>
       </header>
 
@@ -122,7 +122,7 @@ export default function Home() {
               <div><p className="mb-2 text-xs uppercase tracking-[0.18em] text-ivory/40">Quantity</p><div className="flex items-center rounded-full border border-white/15 p-1"><button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="quantity-button" aria-label="Decrease quantity"><Minus size={15} /></button><output className="w-10 text-center text-sm" aria-live="polite">{quantity}</output><button type="button" onClick={() => setQuantity((value) => Math.min(10, value + 1))} className="quantity-button" aria-label="Increase quantity"><Plus size={15} /></button></div></div>
             </div>
             <div className="mt-7 rounded-2xl border border-gold/20 bg-gold/[0.055] p-5"><div className="flex justify-between text-sm text-ivory/55"><span>{quantity} × {formatNpr(PRODUCT.offerPrice)}</span><span>50 ml each</span></div><div className="mt-3 flex items-baseline justify-between"><span className="text-xs uppercase tracking-[0.2em] text-ivory/45">Product total</span><span className="font-display text-3xl text-gold">{formatNpr(productTotal)}</span></div><p className="mt-2 text-right text-[11px] text-ivory/35">Delivery fee added at checkout.</p></div>
-            <OrderLink quantity={quantity} className="mt-5 w-full justify-center">Buy NOIRÉ now</OrderLink><p className="mt-4 text-center text-xs text-ivory/35">No online payment required · Cash On Delivery</p>
+            <OrderLink quantity={quantity} className="mt-5 w-full justify-center">Continue to checkout</OrderLink><p className="mt-4 text-center text-xs text-ivory/35">No online payment required · Cash On Delivery</p>
           </div>
         </div>
       </section>
@@ -160,11 +160,11 @@ export default function Home() {
 
       <section className="relative overflow-hidden border-t border-white/10 py-24 sm:py-32">
         <Image src="/images/noire-stone.png" alt="" fill className="object-cover object-center opacity-35" sizes="100vw" /><div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,7,6,.98),rgba(8,7,6,.78),rgba(8,7,6,.9))]" />
-        <div className="site-shell relative z-10 text-center"><div className="eyebrow">Your signature awaits</div><h2 className="mx-auto mt-6 max-w-4xl font-display text-[clamp(3.2rem,8vw,7.5rem)] leading-[.92] tracking-[-.04em]">Make your presence<br /><span className="italic text-gold">unmistakable.</span></h2><p className="mx-auto mt-7 max-w-lg text-sm leading-7 text-ivory/55">NOIRÉ Eau de Parfum · 50 ml · Cash On Delivery available across Nepal.</p><OrderLink quantity={quantity} className="mt-9">Purchase NOIRÉ</OrderLink></div>
+        <div className="site-shell relative z-10 text-center"><div className="eyebrow">Your signature awaits</div><h2 className="mx-auto mt-6 max-w-4xl font-display text-[clamp(3.2rem,8vw,7.5rem)] leading-[.92] tracking-[-.04em]">Make your presence<br /><span className="italic text-gold">unmistakable.</span></h2><p className="mx-auto mt-7 max-w-lg text-sm leading-7 text-ivory/55">NOIRÉ Eau de Parfum · 50 ml · Cash On Delivery available across Nepal.</p><OrderLink quantity={quantity} className="mt-9">Proceed to checkout</OrderLink></div>
       </section>
 
-      <footer className="border-t border-white/10 bg-[#090806] pb-24 pt-12 md:pb-12"><div className="site-shell flex flex-col justify-between gap-8 md:flex-row md:items-end"><div><div className="font-display text-2xl tracking-[0.3em] text-gold">NOIRÉ</div><p className="mt-3 text-xs text-ivory/35">Eau de Parfum · Kathmandu, Nepal</p></div><div className="text-left text-xs leading-6 text-ivory/35 md:text-right"><a className="transition hover:text-gold" href="mailto:reeongurun36@gmail.com">reeongurun36@gmail.com</a><p>© {new Date().getFullYear()} NOIRÉ. All rights reserved.</p></div></div></footer>
-      <div className="fixed inset-x-4 bottom-4 z-50 md:hidden"><OrderLink quantity={quantity} className="w-full justify-center shadow-[0_14px_50px_rgba(0,0,0,.55)]">Order now · {formatNpr(productTotal)}</OrderLink></div>
+      <footer className="border-t border-white/10 bg-[#090806] pb-24 pt-12 md:pb-12"><div className="site-shell flex flex-col justify-between gap-8 md:flex-row md:items-end"><div><div className="font-display text-2xl tracking-[0.3em] text-gold">NOIRÉ</div><p className="mt-3 text-xs text-ivory/35">Eau de Parfum · Kathmandu, Nepal</p><Link href="/checkout" className="mt-4 inline-block text-xs uppercase tracking-[.16em] text-gold hover:underline">Go to checkout →</Link></div><div className="text-left text-xs leading-6 text-ivory/35 md:text-right"><a className="transition hover:text-gold" href="mailto:reeongurun36@gmail.com">reeongurun36@gmail.com</a><p>© {new Date().getFullYear()} NOIRÉ. All rights reserved.</p></div></div></footer>
+      <div className="fixed inset-x-4 bottom-4 z-50 md:hidden"><OrderLink quantity={quantity} className="w-full justify-center shadow-[0_14px_50px_rgba(0,0,0,.55)]">Checkout · {formatNpr(productTotal)}</OrderLink></div>
     </main>
   );
 }
