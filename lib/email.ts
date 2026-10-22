@@ -39,6 +39,17 @@ function customerEmail(order: ValidatedOrder, supportEmail: string) {
 
 type EmailMessage = { to: string; subject: string; html: string };
 
+export function canSendOrderEmails() {
+  const hasRecipientAndSender = Boolean(
+    process.env.BUSINESS_EMAIL && process.env.EMAIL_FROM,
+  );
+  const hasProvider = Boolean(
+    process.env.EMAIL_SERVICE_API_KEY ||
+      (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
+  );
+  return hasRecipientAndSender && hasProvider;
+}
+
 async function sendWithResend(message: EmailMessage, from: string, replyTo: string) {
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",

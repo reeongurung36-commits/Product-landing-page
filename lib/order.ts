@@ -43,10 +43,14 @@ export function getDeliveryLabel(zone: DeliveryZone) {
 
 export function createOrderId() {
   const now = new Date();
-  const date = [
-    now.getUTCFullYear(),
-    String(now.getUTCMonth() + 1).padStart(2, "0"),
-    String(now.getUTCDate()).padStart(2, "0"),
-  ].join("");
+  const dateParts = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Kathmandu",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    dateParts.find((item) => item.type === type)?.value ?? "";
+  const date = `${part("year")}${part("month")}${part("day")}`;
   return `NOIRE-${date}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }

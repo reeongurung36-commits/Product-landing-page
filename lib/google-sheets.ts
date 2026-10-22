@@ -20,6 +20,14 @@ export const SHEET_HEADERS = [
   "Notes",
 ] as const;
 
+export function canSyncOrdersToGoogleSheet() {
+  return Boolean(
+    process.env.GOOGLE_SHEET_ID &&
+      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
+      process.env.GOOGLE_PRIVATE_KEY,
+  );
+}
+
 function encodeBase64Url(value: Uint8Array | string) {
   const bytes =
     typeof value === "string" ? new TextEncoder().encode(value) : value;

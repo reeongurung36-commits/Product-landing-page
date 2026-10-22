@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { sendOrderEmails } from "@/lib/email";
-import { appendOrderToGoogleSheet } from "@/lib/google-sheets";
+import { canSendOrderEmails, sendOrderEmails } from "@/lib/email";
+import {
+  appendOrderToGoogleSheet,
+  canSyncOrdersToGoogleSheet,
+} from "@/lib/google-sheets";
 import {
   createOrderId,
   DELIVERY_FEES,
   PRODUCT,
   type ValidatedOrder,
 } from "@/lib/order";
+import { saveOrder } from "@/lib/order-storage";
 
-export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const orderSchema = z.object({
   customerName: z.string({ required_error: "Name is required." }).trim().min(2, "Please enter your full name.").max(100),
@@ -83,27 +87,28 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    await appendOrderToGoogleSheet(order);
+    await saveOrder(order);
   } catch (error) {
-    console.error("Order spreadsheet submission failed:", error);
+    console.error("Order database submission failed:", error);
     return NextResponse.json(
-      { error: "We could not record your order. Please try again shortly." },
-      { status: 502 },
+      { error: "We could not save your order. Please try again shortly." },
+      { status: 503 },
     );
   }
 
-  try {
-    await sendOrderEmails(order);
-  } catch (error) {
-    console.error(`Order ${order.orderId} was recorded, but email delivery failed:`, error);
-    return NextResponse.json(
-      {
-        error: `Your order was recorded as ${order.orderId}, but the confirmation email could not be sent. Please contact us before placing another order.`,
-        orderRecorded: true,
-        orderId: order.orderId,
-      },
-      { status: 502 },
-    );
+  const followUpTasks: Promise<unknown>[] = [];
+  if (canSyncOrdersToGoogleSheet()) {
+    followUpTasks.push(appendOrderToGoogleSheet(order));
+  }
+  if (canSendOrderEmails()) {
+    followUpTasks.push(sendOrderEmails(order));
+  }
+
+  const followUpResults = await Promise.allSettled(followUpTasks);
+  for (const result of followUpResults) {
+    if (result.status === "rejected") {
+      console.error(`Optional follow-up for order ${order.orderId} failed:`, result.reason);
+    }
   }
 
   return NextResponse.json({
