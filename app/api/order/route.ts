@@ -96,19 +96,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const followUpTasks: Promise<unknown>[] = [];
-  if (canSyncOrdersToGoogleSheet()) {
-    followUpTasks.push(appendOrderToGoogleSheet(order));
-  }
-  if (canSendOrderEmails()) {
-    followUpTasks.push(sendOrderEmails(order));
-  }
+  const sheetsConfigured = canSyncOrdersToGoogleSheet();
+  const emailConfigured = canSendOrderEmails();
+  const [sheetsResult, emailResult] = await Promise.allSettled([
+    sheetsConfigured ? appendOrderToGoogleSheet(order) : Promise.resolve(),
+    emailConfigured ? sendOrderEmails(order) : Promise.resolve(),
+  ]);
 
-  const followUpResults = await Promise.allSettled(followUpTasks);
-  for (const result of followUpResults) {
-    if (result.status === "rejected") {
-      console.error(`Optional follow-up for order ${order.orderId} failed:`, result.reason);
-    }
+  if (sheetsResult.status === "rejected") {
+    console.error(`Google Sheets sync for order ${order.orderId} failed:`, sheetsResult.reason);
+  }
+  if (emailResult.status === "rejected") {
+    console.error(`Email delivery for order ${order.orderId} failed:`, emailResult.reason);
   }
 
   return NextResponse.json({
@@ -119,6 +118,18 @@ export async function POST(request: NextRequest) {
       quantity: order.quantity,
       totalPrice: order.totalPrice,
       paymentMethod: order.paymentMethod,
+    },
+    integrations: {
+      googleSheets: !sheetsConfigured
+        ? "not_configured"
+        : sheetsResult.status === "fulfilled"
+          ? "synced"
+          : "failed",
+      email: !emailConfigured
+        ? "not_configured"
+        : emailResult.status === "fulfilled"
+          ? "sent"
+          : "failed",
     },
   });
 }

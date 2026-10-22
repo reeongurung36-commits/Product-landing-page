@@ -6,15 +6,17 @@ const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
 export const SHEET_HEADERS = [
   "Order ID",
-  "Date & Time",
+  "Order Date",
   "Customer Name",
-  "Phone Number",
-  "Email Address",
-  "Exact Location",
-  "Product Name",
+  "Phone",
+  "Email",
+  "Delivery Address",
+  "Delivery Area",
+  "Product",
   "Quantity",
-  "Price Per Piece",
-  "Total Price",
+  "Unit Price (NPR)",
+  "Delivery Fee (NPR)",
+  "Total (NPR)",
   "Payment Method",
   "Order Status",
   "Notes",
@@ -121,17 +123,6 @@ async function ensureSheetStructure(
   tabName: string,
   accessToken: string,
 ) {
-  const encodedTab = encodeURIComponent(`'${tabName}'!A1:M1`);
-  const valuesUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}/values/${encodedTab}`;
-  const current = await googleRequest(valuesUrl, accessToken);
-  const currentData = (await current.json()) as { values?: string[][] };
-  if (currentData.values?.[0]?.length) return;
-
-  await googleRequest(`${valuesUrl}?valueInputOption=RAW`, accessToken, {
-    method: "PUT",
-    body: JSON.stringify({ values: [SHEET_HEADERS] }),
-  });
-
   const metadataResponse = await googleRequest(
     `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}?fields=sheets.properties`,
     accessToken,
@@ -139,18 +130,45 @@ async function ensureSheetStructure(
   const metadata = (await metadataResponse.json()) as {
     sheets?: Array<{ properties?: { sheetId?: number; title?: string } }>;
   };
-  const numericSheetId = metadata.sheets?.find(
+  let numericSheetId = metadata.sheets?.find(
     (sheet) => sheet.properties?.title === tabName,
   )?.properties?.sheetId;
+
   if (numericSheetId === undefined) {
-    throw new Error(`The Google Sheet tab “${tabName}” was not found.`);
+    const createResponse = await googleRequest(
+      `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}:batchUpdate`,
+      accessToken,
+      {
+        method: "POST",
+        body: JSON.stringify({ requests: [{ addSheet: { properties: { title: tabName } } }] }),
+      },
+    );
+    const createData = (await createResponse.json()) as {
+      replies?: Array<{ addSheet?: { properties?: { sheetId?: number } } }>;
+    };
+    numericSheetId = createData.replies?.[0]?.addSheet?.properties?.sheetId;
   }
+
+  if (numericSheetId === undefined) {
+    throw new Error(`The Google Sheet tab “${tabName}” could not be created.`);
+  }
+
+  const encodedHeaderRange = encodeURIComponent(`'${tabName}'!A1:O1`);
+  await googleRequest(
+    `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}/values/${encodedHeaderRange}?valueInputOption=RAW`,
+    accessToken,
+    { method: "PUT", body: JSON.stringify({ values: [SHEET_HEADERS] }) },
+  );
 
   const requests = [
     {
       updateSheetProperties: {
-        properties: { sheetId: numericSheetId, gridProperties: { frozenRowCount: 1 } },
-        fields: "gridProperties.frozenRowCount",
+        properties: {
+          sheetId: numericSheetId,
+          gridProperties: { frozenRowCount: 1 },
+          tabColorStyle: { rgbColor: { red: 0.84, green: 0.67, blue: 0.32 } },
+        },
+        fields: "gridProperties.frozenRowCount,tabColorStyle",
       },
     },
     {
@@ -160,19 +178,130 @@ async function ensureSheetStructure(
           startRowIndex: 0,
           endRowIndex: 1,
           startColumnIndex: 0,
-          endColumnIndex: 13,
+          endColumnIndex: 15,
         },
         cell: {
           userEnteredFormat: {
-            backgroundColor: { red: 0.12, green: 0.09, blue: 0.04 },
+            backgroundColor: { red: 0.06, green: 0.05, blue: 0.04 },
             textFormat: {
-              foregroundColor: { red: 0.94, green: 0.72, blue: 0.32 },
+              foregroundColor: { red: 0.84, green: 0.67, blue: 0.32 },
               bold: true,
+              fontFamily: "Georgia",
+              fontSize: 11,
             },
             horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE",
+            wrapStrategy: "WRAP",
+            borders: {
+              bottom: {
+                style: "SOLID_THICK",
+                color: { red: 0.84, green: 0.67, blue: 0.32 },
+              },
+            },
           },
         },
-        fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)",
+        fields: "userEnteredFormat",
+      },
+    },
+    {
+      updateDimensionProperties: {
+        range: {
+          sheetId: numericSheetId,
+          dimension: "ROWS",
+          startIndex: 0,
+          endIndex: 1,
+        },
+        properties: { pixelSize: 38 },
+        fields: "pixelSize",
+      },
+    },
+    {
+      repeatCell: {
+        range: {
+          sheetId: numericSheetId,
+          startRowIndex: 1,
+          startColumnIndex: 0,
+          endColumnIndex: 15,
+        },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: { red: 0.98, green: 0.96, blue: 0.92 },
+            textFormat: {
+              foregroundColor: { red: 0.15, green: 0.13, blue: 0.1 },
+              fontFamily: "Arial",
+              fontSize: 10,
+            },
+            verticalAlignment: "MIDDLE",
+          },
+        },
+        fields: "userEnteredFormat(backgroundColor,textFormat,verticalAlignment)",
+      },
+    },
+    {
+      repeatCell: {
+        range: {
+          sheetId: numericSheetId,
+          startRowIndex: 1,
+          startColumnIndex: 0,
+          endColumnIndex: 1,
+        },
+        cell: {
+          userEnteredFormat: {
+            textFormat: {
+              foregroundColor: { red: 0.57, green: 0.4, blue: 0.12 },
+              bold: true,
+            },
+          },
+        },
+        fields: "userEnteredFormat.textFormat",
+      },
+    },
+    {
+      repeatCell: {
+        range: {
+          sheetId: numericSheetId,
+          startRowIndex: 1,
+          startColumnIndex: 9,
+          endColumnIndex: 12,
+        },
+        cell: {
+          userEnteredFormat: {
+            numberFormat: { type: "NUMBER", pattern: "\"NPR\" #,##0" },
+            horizontalAlignment: "RIGHT",
+          },
+        },
+        fields: "userEnteredFormat(numberFormat,horizontalAlignment)",
+      },
+    },
+    {
+      repeatCell: {
+        range: {
+          sheetId: numericSheetId,
+          startRowIndex: 1,
+          startColumnIndex: 11,
+          endColumnIndex: 12,
+        },
+        cell: {
+          userEnteredFormat: {
+            textFormat: {
+              foregroundColor: { red: 0.57, green: 0.4, blue: 0.12 },
+              bold: true,
+            },
+          },
+        },
+        fields: "userEnteredFormat.textFormat",
+      },
+    },
+    {
+      repeatCell: {
+        range: {
+          sheetId: numericSheetId,
+          startRowIndex: 1,
+          startColumnIndex: 5,
+          endColumnIndex: 6,
+        },
+        cell: { userEnteredFormat: { wrapStrategy: "WRAP" } },
+        fields: "userEnteredFormat.wrapStrategy",
       },
     },
     {
@@ -180,8 +309,8 @@ async function ensureSheetStructure(
         range: {
           sheetId: numericSheetId,
           startRowIndex: 1,
-          startColumnIndex: 11,
-          endColumnIndex: 12,
+          startColumnIndex: 13,
+          endColumnIndex: 14,
         },
         rule: {
           condition: {
@@ -206,7 +335,7 @@ async function ensureSheetStructure(
             sheetId: numericSheetId,
             startRowIndex: 0,
             startColumnIndex: 0,
-            endColumnIndex: 13,
+            endColumnIndex: 15,
           },
         },
       },
@@ -217,10 +346,35 @@ async function ensureSheetStructure(
           sheetId: numericSheetId,
           dimension: "COLUMNS",
           startIndex: 0,
-          endIndex: 13,
+          endIndex: 15,
         },
       },
     },
+    ...[
+      [0, 1, 190],
+      [1, 2, 155],
+      [2, 3, 180],
+      [3, 4, 135],
+      [4, 5, 220],
+      [5, 6, 280],
+      [6, 7, 185],
+      [7, 8, 140],
+      [8, 9, 85],
+      [9, 12, 135],
+      [12, 14, 155],
+      [14, 15, 220],
+    ].map(([startIndex, endIndex, pixelSize]) => ({
+      updateDimensionProperties: {
+        range: {
+          sheetId: numericSheetId,
+          dimension: "COLUMNS",
+          startIndex,
+          endIndex,
+        },
+        properties: { pixelSize },
+        fields: "pixelSize",
+      },
+    })),
   ];
 
   await googleRequest(
@@ -241,7 +395,7 @@ export async function appendOrderToGoogleSheet(order: ValidatedOrder) {
 
   const accessToken = await getAccessToken(serviceAccountEmail, privateKey);
   await ensureSheetStructure(sheetId, tabName, accessToken);
-  const encodedRange = encodeURIComponent(`'${tabName}'!A:M`);
+  const encodedRange = encodeURIComponent(`'${tabName}'!A:O`);
   const appendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}/values/${encodedRange}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
   await googleRequest(appendUrl, accessToken, {
     method: "POST",
@@ -253,10 +407,12 @@ export async function appendOrderToGoogleSheet(order: ValidatedOrder) {
           order.customerName,
           order.phone,
           order.email,
-          `${order.location} (${getDeliveryLabel(order.deliveryZone)})`,
+          order.location,
+          getDeliveryLabel(order.deliveryZone),
           order.productName,
           order.quantity,
           order.pricePerPiece,
+          order.deliveryFee,
           order.totalPrice,
           order.paymentMethod,
           order.orderStatus,
