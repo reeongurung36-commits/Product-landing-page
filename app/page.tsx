@@ -50,10 +50,11 @@ const faqs = [
 ];
 
 function OrderLink({ quantity, children, className = "" }: { quantity: number; children: React.ReactNode; className?: string }) {
+  const checkoutUrl = `/checkout?product=${encodeURIComponent(PRODUCT.name)}&quantity=${quantity}&price=${PRODUCT.offerPrice}`;
   return (
-    <Link href={`/checkout?product=${encodeURIComponent(PRODUCT.name)}&quantity=${quantity}&price=${PRODUCT.offerPrice}`} className={`gold-button ${className}`}>
+    <a href={checkoutUrl} className={`gold-button ${className}`}>
       {children}<ArrowRight aria-hidden="true" size={18} />
-    </Link>
+    </a>
   );
 }
 
