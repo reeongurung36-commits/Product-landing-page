@@ -18,7 +18,7 @@ A production-ready Next.js App Router funnel for NOIRÉ Eau de Parfum. It includ
 4. The API validates every field and recalculates price and total on the server. It never trusts a price sent by the browser.
 5. The API generates a unique order ID, sets the status to `New Order`, and appends the order to Google Sheets.
 6. Only after the sheet write succeeds, the API sends a business notification and a customer confirmation email.
-7. The success response contains the verified order summary. The browser then redirects to `/order-confirmed`.
+7. The success response contains the verified order summary. The browser then redirects to `/thank-you`.
 
 If the sheet write fails, no emails are sent and checkout displays an error. If the sheet write succeeds but an email fails, checkout displays the saved order ID and tells the customer not to submit a duplicate.
 
@@ -151,7 +151,7 @@ All credentials are read only inside server-side files. They are never exposed t
 4. Confirm one new row appears in `NOIRE_orders` with an order ID, Nepal time, COD payment, and `New Order` status.
 5. Confirm `reeongurun36@gmail.com` receives the business notification.
 6. Confirm the customer address receives the order confirmation.
-7. Confirm the browser redirects to `/order-confirmed` and shows the same order ID, quantity, and total. The older `/thank-you` route remains available for compatibility.
+7. Confirm the browser redirects to `/thank-you` and shows the same order ID, quantity, and total. The `/order-confirmed` route remains available as a compatibility alias.
 8. Temporarily enter an invalid email or location to verify client and server validation messages.
 
 An API success response is returned only after the sheet row and both emails succeed.
