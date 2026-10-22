@@ -43,11 +43,7 @@ export function canSendOrderEmails() {
   const hasRecipientAndSender = Boolean(
     process.env.BUSINESS_EMAIL && process.env.EMAIL_FROM,
   );
-  const hasProvider = Boolean(
-    process.env.EMAIL_SERVICE_API_KEY ||
-      (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
-  );
-  return hasRecipientAndSender && hasProvider;
+  return hasRecipientAndSender && Boolean(process.env.EMAIL_SERVICE_API_KEY);
 }
 
 async function sendWithResend(message: EmailMessage, from: string, replyTo: string) {

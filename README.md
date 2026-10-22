@@ -7,8 +7,8 @@ A production-ready Next.js App Router funnel for NOIRÉ Eau de Parfum. It includ
 - **Next.js App Router + TypeScript** for the pages and secure server route.
 - **Tailwind CSS** for the responsive black-and-gold interface.
 - **Google Sheets API** with a service account for order storage.
-- **Gmail SMTP with Nodemailer** on Vercel, or **Resend's HTTP API** when `EMAIL_SERVICE_API_KEY` is set.
-- **Vercel** for the simplest deployment of the Next.js application and Gmail SMTP support.
+- **Resend's HTTPS API** for hosted email delivery. Gmail SMTP remains available only on runtimes that support raw TCP connections, such as a conventional Node.js server.
+- **OpenAI Sites** for the published application, durable order storage, and runtime secrets.
 
 ## How an order moves through the system
 
@@ -17,10 +17,10 @@ A production-ready Next.js App Router funnel for NOIRÉ Eau de Parfum. It includ
 3. The browser sends only customer details, delivery area, product name, and quantity to `POST /api/order`.
 4. The API validates every field and recalculates price and total on the server. It never trusts a price sent by the browser.
 5. The API generates a unique order ID, sets the status to `New Order`, and appends the order to Google Sheets.
-6. Only after the sheet write succeeds, the API sends a business notification and a customer confirmation email.
+6. When the HTTPS email provider is configured, the API sends a business notification and a customer confirmation email.
 7. The success response contains the verified order summary. The browser then redirects to `/thank-you`.
 
-If the sheet write fails, no emails are sent and checkout displays an error. If the sheet write succeeds but an email fails, checkout displays the saved order ID and tells the customer not to submit a duplicate.
+The durable site database remains the source of truth, so an optional Sheets or email-provider outage never loses or duplicates the customer's order.
 
 ## Local setup
 
@@ -39,11 +39,11 @@ Open the local URL printed in the terminal. Never commit `.env.local`.
 ### 1. Create the sheet
 
 1. Open [Google Sheets](https://sheets.google.com) and create a blank spreadsheet named `NOIRÉ Orders`.
-2. Rename the first tab to `NOIRE_orders` exactly, or change `GOOGLE_SHEET_TAB_NAME` to match your chosen tab name.
-3. The application creates and styles the header row automatically when the first order arrives. If you prefer to add it manually, paste these 13 headings into row 1:
+2. The application creates the `NOIRE_orders` tab automatically when the first order arrives.
+3. The application creates and styles the header row automatically. If you prefer to add it manually, paste these 15 headings into row 1:
 
 ```text
-Order ID | Date & Time | Customer Name | Phone Number | Email Address | Exact Location | Product Name | Quantity | Price Per Piece | Total Price | Payment Method | Order Status | Notes
+Order ID | Order Date | Customer Name | Phone | Email | Delivery Address | Delivery Area | Product | Quantity | Unit Price (NPR) | Delivery Fee (NPR) | Total (NPR) | Payment Method | Order Status | Notes
 ```
 
 The first successful order also freezes the header, adds a filter, auto-sizes columns, and adds this dropdown to the **Order Status** column:
@@ -54,7 +54,7 @@ The first successful order also freezes the header, adds a filter, auto-sizes co
 - Delivered
 - Cancelled
 
-To add those manually, select column L from row 2 downward, choose **Data → Data validation → Dropdown**, and enter the five options. To add filters manually, select row 1 and choose **Data → Create a filter**.
+To add those manually, select column N from row 2 downward, choose **Data → Data validation → Dropdown**, and enter the five options. To add filters manually, select row 1 and choose **Data → Create a filter**.
 
 ### 2. Create a Google service account
 
@@ -91,9 +91,9 @@ Keep the literal `\n` sequences when using a single-line environment variable in
 
 ## Configure email
 
-The server supports two delivery methods. If `EMAIL_SERVICE_API_KEY` exists, Resend is used. Otherwise, Gmail SMTP is used.
+The hosted Site uses Resend's HTTPS API. This is required because Sites does not provide raw SMTP connections.
 
-### Gmail SMTP on Vercel
+### Gmail SMTP on a conventional Node.js host
 
 1. Turn on two-step verification for `reeongurun36@gmail.com`.
 2. Create a Google **App Password** for Mail. Do not use the normal Gmail password.
@@ -109,9 +109,9 @@ SMTP_USER=reeongurun36@gmail.com
 SMTP_PASS=your-16-character-app-password
 ```
 
-Gmail may apply sending limits. For higher order volume, use a transactional email provider.
+Do not configure these SMTP values on OpenAI Sites. Gmail may apply sending limits, and SMTP is not available in this hosting runtime.
 
-### Resend alternative
+### Resend for the published Site
 
 Verify a sender domain in Resend, then set:
 
@@ -121,7 +121,7 @@ EMAIL_FROM="NOIRÉ Orders <orders@your-verified-domain.com>"
 EMAIL_SERVICE_API_KEY=re_your_key
 ```
 
-You can leave the SMTP values empty when Resend is configured. Resend is also the recommended option on runtimes that do not allow SMTP connections.
+Leave the SMTP values empty on Sites. The sender domain must be verified in Resend before confirmations can be sent to arbitrary customer addresses.
 
 ## Complete environment file
 
