@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, Check, Mail, Phone, ShieldCheck } from "lucide-react";
@@ -20,7 +19,7 @@ function ThankYouContent() {
         <div className="eyebrow mt-8">Order received</div><h1 className="mt-4 font-display text-5xl leading-[.95] tracking-[-.04em] sm:text-6xl">Thank you for<br /><span className="italic text-gold">your order!</span></h1><p className="mx-auto mt-6 max-w-lg text-sm leading-7 text-ivory/50">Our sales representative will call you soon to confirm your order.</p>
         <div className="mt-9 rounded-2xl border border-white/10 bg-black/20 p-5 text-left sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-5"><div><p className="text-[10px] uppercase tracking-[.18em] text-ivory/35">Order ID</p><p className="mt-1 text-sm text-gold">{orderId}</p></div><span className="rounded-full border border-gold/25 bg-gold/[.06] px-3 py-1 text-[10px] uppercase tracking-[.16em] text-gold">New Order</span></div><dl className="mt-5 space-y-3 text-sm"><div className="flex justify-between gap-4"><dt className="text-ivory/40">Product ordered</dt><dd>{product} · 50 ml</dd></div><div className="flex justify-between"><dt className="text-ivory/40">Quantity</dt><dd>{quantity}</dd></div><div className="flex justify-between"><dt className="text-ivory/40">Total price</dt><dd className="text-gold">{formatNpr(total)}</dd></div><div className="flex justify-between gap-4"><dt className="text-ivory/40">Payment method</dt><dd>Cash On Delivery</dd></div></dl></div>
         <div className="mt-6 grid gap-3 text-left sm:grid-cols-2"><div className="flex items-center gap-3 rounded-xl border border-white/8 p-4"><Phone size={17} className="text-gold" /><p className="text-xs leading-5 text-ivory/48">Keep your phone nearby for our confirmation call.</p></div><div className="flex items-center gap-3 rounded-xl border border-white/8 p-4"><Mail size={17} className="text-gold" /><p className="text-xs leading-5 text-ivory/48">Save this confirmation and order ID for your records.</p></div></div>
-        <Link href="/" className="gold-button mt-8">Back to home <ArrowRight size={18} /></Link><p className="mt-5 flex items-center justify-center gap-2 text-[11px] text-ivory/30"><ShieldCheck size={13} /> Cash On Delivery · NOIRÉ Nepal</p>
+        <a href="/" className="gold-button mt-8">Back to home <ArrowRight size={18} /></a><p className="mt-5 flex items-center justify-center gap-2 text-[11px] text-ivory/30"><ShieldCheck size={13} /> Cash On Delivery · NOIRÉ Nepal</p>
       </div>
     </main>
   );
