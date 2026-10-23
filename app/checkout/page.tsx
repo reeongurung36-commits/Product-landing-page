@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, Suspense, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, LoaderCircle, LockKeyhole, Minus, Plus, ShieldCheck } from "lucide-react";
 import { DELIVERY_FEES, formatNpr, PRODUCT, type DeliveryZone } from "@/lib/order";
@@ -19,10 +19,12 @@ function CheckoutContent() {
   const [errors, setErrors] = useState<Errors>({});
   const [apiError, setApiError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const idempotencyKey = useRef<string | null>(null);
   const deliveryFee = DELIVERY_FEES[form.deliveryZone];
   const total = useMemo(() => PRODUCT.offerPrice * quantity + deliveryFee, [quantity, deliveryFee]);
 
   const update = (field: keyof FormState, value: string) => {
+    idempotencyKey.current = null;
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
   };
@@ -42,11 +44,12 @@ function CheckoutContent() {
     if (submitting || !validate()) return;
     setSubmitting(true);
     setApiError("");
+    idempotencyKey.current ??= crypto.randomUUID();
     try {
       const response = await fetch("/api/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, productName: PRODUCT.name, quantity }),
+        body: JSON.stringify({ ...form, productName: PRODUCT.name, quantity, idempotencyKey: idempotencyKey.current }),
       });
       const data = (await response.json()) as { error?: string; order?: { orderId: string; productName: string; quantity: number; totalPrice: number } };
       if (!response.ok || !data.order) throw new Error(data.error || "We could not submit your order. Please try again.");
@@ -81,7 +84,7 @@ function CheckoutContent() {
 
         <aside className="lg:sticky lg:top-10 lg:self-start">
           <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#100d0a]"><div className="relative aspect-[16/10]"><Image src="/images/noire-hero.png" alt="NOIRÉ Eau de Parfum" fill className="object-cover" sizes="(max-width:1024px) 100vw, 38vw" /><div className="absolute inset-0 bg-gradient-to-t from-[#100d0a] via-transparent to-transparent" /></div><div className="p-6 sm:p-8"><div className="flex items-start justify-between gap-4"><div><p className="font-display text-2xl">NOIRÉ</p><p className="mt-1 text-xs text-ivory/38">Eau de Parfum · 50 ml</p></div><span className="rounded-full border border-gold/20 bg-gold/[.06] px-3 py-1 text-[10px] uppercase tracking-[.16em] text-gold">COD</span></div>
-            <div className="my-6 h-px bg-white/10" /><div className="flex items-center justify-between"><span className="text-xs uppercase tracking-[.14em] text-ivory/40">Quantity</span><div className="flex items-center rounded-full border border-white/15 p-1"><button type="button" className="quantity-button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} aria-label="Decrease quantity"><Minus size={14} /></button><output className="w-10 text-center text-sm">{quantity}</output><button type="button" className="quantity-button" onClick={() => setQuantity((value) => Math.min(10, value + 1))} aria-label="Increase quantity"><Plus size={14} /></button></div></div>
+            <div className="my-6 h-px bg-white/10" /><div className="flex items-center justify-between"><span className="text-xs uppercase tracking-[.14em] text-ivory/40">Quantity</span><div className="flex items-center rounded-full border border-white/15 p-1"><button type="button" className="quantity-button" onClick={() => { idempotencyKey.current = null; setQuantity((value) => Math.max(1, value - 1)); }} aria-label="Decrease quantity"><Minus size={14} /></button><output className="w-10 text-center text-sm">{quantity}</output><button type="button" className="quantity-button" onClick={() => { idempotencyKey.current = null; setQuantity((value) => Math.min(10, value + 1)); }} aria-label="Increase quantity"><Plus size={14} /></button></div></div>
             <dl className="mt-7 space-y-3 text-sm"><div className="flex justify-between text-ivory/48"><dt>Price per piece</dt><dd>{formatNpr(PRODUCT.offerPrice)}</dd></div><div className="flex justify-between text-ivory/48"><dt>Product subtotal</dt><dd>{formatNpr(PRODUCT.offerPrice * quantity)}</dd></div><div className="flex justify-between text-ivory/48"><dt>Delivery</dt><dd>{formatNpr(deliveryFee)}</dd></div><div className="h-px bg-white/10" /><div className="flex items-baseline justify-between"><dt className="text-xs uppercase tracking-[.16em] text-ivory/55">Total</dt><dd className="font-display text-3xl text-gold">{formatNpr(total)}</dd></div></dl>
             <div className="mt-7 space-y-3 rounded-xl border border-white/8 bg-white/[.025] p-4">{["Pay only when delivered", "Order confirmation by phone", "Email receipt after submission"].map((item) => <p key={item} className="flex items-center gap-3 text-xs text-ivory/48"><Check size={14} className="text-gold" />{item}</p>)}</div>
           </div></div>

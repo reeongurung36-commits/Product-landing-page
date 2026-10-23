@@ -37,7 +37,7 @@ function customerEmail(order: ValidatedOrder, supportEmail: string) {
   );
 }
 
-type EmailMessage = { to: string; subject: string; html: string };
+type EmailMessage = { to: string; subject: string; html: string; idempotencyKey: string };
 
 export function canSendOrderEmails() {
   const hasRecipientAndSender = Boolean(
@@ -52,6 +52,7 @@ async function sendWithResend(message: EmailMessage, from: string, replyTo: stri
     headers: {
       Authorization: `Bearer ${process.env.EMAIL_SERVICE_API_KEY}`,
       "Content-Type": "application/json",
+      "Idempotency-Key": message.idempotencyKey,
     },
     body: JSON.stringify({
       from,
@@ -102,11 +103,13 @@ export async function sendOrderEmails(order: ValidatedOrder) {
       to: businessEmailAddress,
       subject: `New Product Order Received - ${order.orderId}`,
       html: businessEmail(order),
+      idempotencyKey: `order-received/${order.orderId}`,
     },
     {
       to: order.email,
       subject: `Your Order Has Been Received - ${process.env.BRAND_NAME || "NOIRÉ"}`,
       html: customerEmail(order, businessEmailAddress),
+      idempotencyKey: `order-confirmation/${order.orderId}`,
     },
   ];
   const sender = process.env.EMAIL_SERVICE_API_KEY

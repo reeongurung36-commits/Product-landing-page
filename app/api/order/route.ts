@@ -11,11 +11,15 @@ import {
   PRODUCT,
   type ValidatedOrder,
 } from "@/lib/order";
-import { saveOrder } from "@/lib/order-storage";
+import {
+  findOrderByIdempotencyKey,
+  saveOrder,
+} from "@/lib/order-storage";
 
 export const dynamic = "force-dynamic";
 
 const orderSchema = z.object({
+  idempotencyKey: z.string({ required_error: "A secure order request ID is required." }).uuid("The order request ID is invalid."),
   customerName: z.string({ required_error: "Name is required." }).trim().min(2, "Please enter your full name.").max(100),
   phone: z
     .string({ required_error: "Phone number is required." })
@@ -39,6 +43,25 @@ function originAllowed(request: NextRequest) {
   return origin === request.nextUrl.origin || origin === configuredOrigin;
 }
 
+function orderResponse(
+  order: Pick<ValidatedOrder, "orderId" | "productName" | "quantity" | "totalPrice" | "paymentMethod">,
+  integrations: { googleSheets: string; email: string },
+  duplicate = false,
+) {
+  return NextResponse.json({
+    success: true,
+    duplicate,
+    order: {
+      orderId: order.orderId,
+      productName: order.productName,
+      quantity: order.quantity,
+      totalPrice: order.totalPrice,
+      paymentMethod: order.paymentMethod,
+    },
+    integrations,
+  });
+}
+
 export async function POST(request: NextRequest) {
   if (!originAllowed(request)) {
     return NextResponse.json({ error: "This order origin is not allowed." }, { status: 403 });
@@ -59,6 +82,23 @@ export async function POST(request: NextRequest) {
         fields: parsed.error.flatten().fieldErrors,
       },
       { status: 400 },
+    );
+  }
+
+  try {
+    const existingOrder = await findOrderByIdempotencyKey(parsed.data.idempotencyKey);
+    if (existingOrder) {
+      return orderResponse(
+        existingOrder as ValidatedOrder,
+        { googleSheets: "skipped_duplicate", email: "skipped_duplicate" },
+        true,
+      );
+    }
+  } catch (error) {
+    console.error("Order duplicate check failed:", error);
+    return NextResponse.json(
+      { error: "We could not verify your order. Please try again shortly." },
+      { status: 503 },
     );
   }
 
@@ -87,8 +127,16 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    await saveOrder(order);
+    await saveOrder(order, parsed.data.idempotencyKey);
   } catch (error) {
+    const existingOrder = await findOrderByIdempotencyKey(parsed.data.idempotencyKey).catch(() => null);
+    if (existingOrder) {
+      return orderResponse(
+        existingOrder as ValidatedOrder,
+        { googleSheets: "skipped_duplicate", email: "skipped_duplicate" },
+        true,
+      );
+    }
     console.error("Order database submission failed:", error);
     return NextResponse.json(
       { error: "We could not save your order. Please try again shortly." },
@@ -110,16 +158,9 @@ export async function POST(request: NextRequest) {
     console.error(`Email delivery for order ${order.orderId} failed:`, emailResult.reason);
   }
 
-  return NextResponse.json({
-    success: true,
-    order: {
-      orderId: order.orderId,
-      productName: order.productName,
-      quantity: order.quantity,
-      totalPrice: order.totalPrice,
-      paymentMethod: order.paymentMethod,
-    },
-    integrations: {
+  return orderResponse(
+    order,
+    {
       googleSheets: !sheetsConfigured
         ? "not_configured"
         : sheetsResult.status === "fulfilled"
@@ -131,5 +172,5 @@ export async function POST(request: NextRequest) {
           ? "sent"
           : "failed",
     },
-  });
+  );
 }
