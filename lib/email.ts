@@ -42,7 +42,9 @@ type EmailMessage = { to: string; subject: string; html: string; idempotencyKey:
 function getEmailServiceApiKey() {
   return (
     process.env.EMAIL_SERVICE_API_KEY ||
-    process.env.EMAIL_SERVICE_API_KEYS
+    process.env.EMAIL_SERVICE_API_KEYS ||
+    // Legacy Vercel variable created with "SERVICE" misspelled.
+    process.env.EMAIL_SEVICE_API_KEY
   );
 }
 
