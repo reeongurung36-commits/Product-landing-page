@@ -39,18 +39,25 @@ function customerEmail(order: ValidatedOrder, supportEmail: string) {
 
 type EmailMessage = { to: string; subject: string; html: string; idempotencyKey: string };
 
+function getEmailServiceApiKey() {
+  return (
+    process.env.EMAIL_SERVICE_API_KEY ||
+    process.env.EMAIL_SERVICE_API_KEYS
+  );
+}
+
 export function canSendOrderEmails() {
   const hasRecipientAndSender = Boolean(
     process.env.BUSINESS_EMAIL && process.env.EMAIL_FROM,
   );
-  return hasRecipientAndSender && Boolean(process.env.EMAIL_SERVICE_API_KEY);
+  return hasRecipientAndSender && Boolean(getEmailServiceApiKey());
 }
 
-async function sendWithResend(message: EmailMessage, from: string, replyTo: string) {
+async function sendWithResend(message: EmailMessage, from: string, replyTo: string, apiKey: string) {
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.EMAIL_SERVICE_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       "Idempotency-Key": message.idempotencyKey,
     },
@@ -112,8 +119,9 @@ export async function sendOrderEmails(order: ValidatedOrder) {
       idempotencyKey: `order-confirmation/${order.orderId}`,
     },
   ];
-  const sender = process.env.EMAIL_SERVICE_API_KEY
-    ? (message: EmailMessage) => sendWithResend(message, from, businessEmailAddress)
+  const emailServiceApiKey = getEmailServiceApiKey();
+  const sender = emailServiceApiKey
+    ? (message: EmailMessage) => sendWithResend(message, from, businessEmailAddress, emailServiceApiKey)
     : (message: EmailMessage) => sendWithSmtp(message, from, businessEmailAddress);
   await Promise.all(messages.map(sender));
 }

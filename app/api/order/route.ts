@@ -146,6 +146,11 @@ export async function POST(request: NextRequest) {
 
   const sheetsConfigured = canSyncOrdersToGoogleSheet();
   const emailConfigured = canSendOrderEmails();
+  if (!emailConfigured) {
+    console.warn(
+      `Email delivery for order ${order.orderId} was skipped because the email service secret is not configured.`,
+    );
+  }
   const [sheetsResult, emailResult] = await Promise.allSettled([
     sheetsConfigured ? appendOrderToGoogleSheet(order) : Promise.resolve(),
     emailConfigured ? sendOrderEmails(order) : Promise.resolve(),
