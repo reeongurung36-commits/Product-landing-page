@@ -71,10 +71,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "This order origin is not allowed." }, { status: 403 });
   }
 
-  if (request.headers.get("x-noire-email-config-check") === "1") {
-    console.info("NOIRE email configuration check:", getOrderEmailConfiguration());
-  }
-
   let payload: unknown;
   try {
     payload = await request.json();
