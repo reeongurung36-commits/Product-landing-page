@@ -126,8 +126,12 @@ export async function POST(request: NextRequest) {
     notes: "",
   };
 
+  let googleSheetsPersisted = false;
   try {
-    await saveOrder(order, parsed.data.idempotencyKey);
+    ({ googleSheetsPersisted } = await saveOrder(
+      order,
+      parsed.data.idempotencyKey,
+    ));
   } catch (error) {
     const existingOrder = await findOrderByIdempotencyKey(parsed.data.idempotencyKey).catch(() => null);
     if (existingOrder) {
@@ -152,7 +156,9 @@ export async function POST(request: NextRequest) {
     );
   }
   const [sheetsResult, emailResult] = await Promise.allSettled([
-    sheetsConfigured ? appendOrderToGoogleSheet(order) : Promise.resolve(),
+    sheetsConfigured && !googleSheetsPersisted
+      ? appendOrderToGoogleSheet(order, parsed.data.idempotencyKey)
+      : Promise.resolve(),
     emailConfigured ? sendOrderEmails(order) : Promise.resolve(),
   ]);
 
@@ -168,6 +174,8 @@ export async function POST(request: NextRequest) {
     {
       googleSheets: !sheetsConfigured
         ? "not_configured"
+        : googleSheetsPersisted
+          ? "synced"
         : sheetsResult.status === "fulfilled"
           ? "synced"
           : "failed",

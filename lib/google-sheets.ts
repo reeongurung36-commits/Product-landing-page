@@ -20,6 +20,7 @@ export const SHEET_HEADERS = [
   "Payment Method",
   "Order Status",
   "Notes",
+  "Request ID",
 ] as const;
 
 export function canSyncOrdersToGoogleSheet() {
@@ -153,7 +154,7 @@ async function ensureSheetStructure(
     throw new Error(`The Google Sheet tab “${tabName}” could not be created.`);
   }
 
-  const encodedHeaderRange = encodeURIComponent(`'${tabName}'!A1:O1`);
+  const encodedHeaderRange = encodeURIComponent(`'${tabName}'!A1:P1`);
   await googleRequest(
     `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}/values/${encodedHeaderRange}?valueInputOption=RAW`,
     accessToken,
@@ -178,7 +179,7 @@ async function ensureSheetStructure(
           startRowIndex: 0,
           endRowIndex: 1,
           startColumnIndex: 0,
-          endColumnIndex: 15,
+          endColumnIndex: 16,
         },
         cell: {
           userEnteredFormat: {
@@ -221,7 +222,7 @@ async function ensureSheetStructure(
           sheetId: numericSheetId,
           startRowIndex: 1,
           startColumnIndex: 0,
-          endColumnIndex: 15,
+          endColumnIndex: 16,
         },
         cell: {
           userEnteredFormat: {
@@ -335,7 +336,7 @@ async function ensureSheetStructure(
             sheetId: numericSheetId,
             startRowIndex: 0,
             startColumnIndex: 0,
-            endColumnIndex: 15,
+            endColumnIndex: 16,
           },
         },
       },
@@ -348,6 +349,18 @@ async function ensureSheetStructure(
           startIndex: 0,
           endIndex: 15,
         },
+      },
+    },
+    {
+      updateDimensionProperties: {
+        range: {
+          sheetId: numericSheetId,
+          dimension: "COLUMNS",
+          startIndex: 15,
+          endIndex: 16,
+        },
+        properties: { hiddenByUser: true },
+        fields: "hiddenByUser",
       },
     },
     ...[
@@ -384,7 +397,7 @@ async function ensureSheetStructure(
   );
 }
 
-export async function appendOrderToGoogleSheet(order: ValidatedOrder) {
+function getGoogleSheetsConfig() {
   const sheetId = process.env.GOOGLE_SHEET_ID;
   const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.GOOGLE_PRIVATE_KEY;
@@ -393,9 +406,19 @@ export async function appendOrderToGoogleSheet(order: ValidatedOrder) {
     throw new Error("Google Sheets environment variables are incomplete.");
   }
 
+  return { sheetId, serviceAccountEmail, privateKey, tabName };
+}
+
+export async function appendOrderToGoogleSheet(
+  order: ValidatedOrder,
+  idempotencyKey = "",
+) {
+  const { sheetId, serviceAccountEmail, privateKey, tabName } =
+    getGoogleSheetsConfig();
+
   const accessToken = await getAccessToken(serviceAccountEmail, privateKey);
   await ensureSheetStructure(sheetId, tabName, accessToken);
-  const encodedRange = encodeURIComponent(`'${tabName}'!A:O`);
+  const encodedRange = encodeURIComponent(`'${tabName}'!A:P`);
   const appendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}/values/${encodedRange}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
   await googleRequest(appendUrl, accessToken, {
     method: "POST",
@@ -417,8 +440,49 @@ export async function appendOrderToGoogleSheet(order: ValidatedOrder) {
           order.paymentMethod,
           order.orderStatus,
           order.notes,
+          idempotencyKey,
         ],
       ],
     }),
   });
+}
+
+export async function findOrderInGoogleSheet(idempotencyKey: string) {
+  const { sheetId, serviceAccountEmail, privateKey, tabName } =
+    getGoogleSheetsConfig();
+  const accessToken = await getAccessToken(serviceAccountEmail, privateKey);
+  await ensureSheetStructure(sheetId, tabName, accessToken);
+  const encodedRange = encodeURIComponent(`'${tabName}'!A2:P`);
+  const response = await googleRequest(
+    `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}/values/${encodedRange}?majorDimension=ROWS`,
+    accessToken,
+  );
+  const data = (await response.json()) as { values?: unknown[][] };
+  const row = data.values
+    ?.slice()
+    .reverse()
+    .find((candidate) => candidate[15] === idempotencyKey);
+
+  if (!row) return null;
+
+  const deliveryZone =
+    row[6] === "Inside Kathmandu Valley" ? "inside" : "outside";
+
+  return {
+    orderId: String(row[0] ?? ""),
+    submittedAt: String(row[1] ?? ""),
+    customerName: String(row[2] ?? ""),
+    phone: String(row[3] ?? ""),
+    email: String(row[4] ?? ""),
+    location: String(row[5] ?? ""),
+    deliveryZone,
+    productName: "NOIRÉ",
+    quantity: Number(row[8] ?? 0),
+    pricePerPiece: Number(row[9] ?? 0),
+    deliveryFee: Number(row[10] ?? 0),
+    totalPrice: Number(row[11] ?? 0),
+    paymentMethod: "Cash On Delivery",
+    orderStatus: "New Order",
+    notes: String(row[14] ?? ""),
+  } satisfies ValidatedOrder;
 }

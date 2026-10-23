@@ -20,7 +20,7 @@ A production-ready Next.js App Router funnel for NOIRÉ Eau de Parfum. It includ
 6. When the HTTPS email provider is configured, the API sends a business notification and a customer confirmation email.
 7. The success response contains the verified order summary. The browser then redirects to `/thank-you`.
 
-The durable site database remains the source of truth, so an optional Sheets or email-provider outage never loses or duplicates the customer's order.
+OpenAI Sites uses its durable D1 database as the source of truth. On Vercel, the configured Google Sheet is the durable order store and a hidden request-ID column protects retries from creating a second order or email. Email-provider failures do not prevent a saved order from reaching the thank-you page.
 
 ## Local setup
 
@@ -160,7 +160,7 @@ An API success response is returned only after the sheet row and both emails suc
 
 1. Push this folder to a GitHub repository.
 2. In [Vercel](https://vercel.com), choose **Add New → Project** and import the repository.
-3. Keep the detected framework as **Next.js** and set the build command to `npm run build:vercel`.
+3. Keep the detected framework as **Next.js**. The committed `vercel.json` automatically selects the native `npm run build:vercel` command required by Vercel.
 4. In **Project Settings → Environment Variables**, add every production value from `.env.example`.
 5. Set both `NEXT_PUBLIC_SITE_URL` and `FRONTEND_URL` to the final HTTPS Vercel domain, for example `https://noire.example.com`.
 6. Deploy. After a domain change, update both URL variables and redeploy.
