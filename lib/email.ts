@@ -48,11 +48,29 @@ function getEmailServiceApiKey() {
   );
 }
 
+export function getOrderEmailConfiguration() {
+  const apiKeySource = process.env.EMAIL_SERVICE_API_KEY
+    ? "EMAIL_SERVICE_API_KEY"
+    : process.env.EMAIL_SERVICE_API_KEYS
+      ? "EMAIL_SERVICE_API_KEYS"
+      : process.env.EMAIL_SEVICE_API_KEY
+        ? "EMAIL_SEVICE_API_KEY"
+        : null;
+  const missing: string[] = [];
+
+  if (!apiKeySource) missing.push("EMAIL_SERVICE_API_KEY");
+  if (!process.env.BUSINESS_EMAIL) missing.push("BUSINESS_EMAIL");
+  if (!process.env.EMAIL_FROM) missing.push("EMAIL_FROM");
+
+  return {
+    configured: missing.length === 0,
+    missing,
+    apiKeySource,
+  };
+}
+
 export function canSendOrderEmails() {
-  const hasRecipientAndSender = Boolean(
-    process.env.BUSINESS_EMAIL && process.env.EMAIL_FROM,
-  );
-  return hasRecipientAndSender && Boolean(getEmailServiceApiKey());
+  return getOrderEmailConfiguration().configured;
 }
 
 async function sendWithResend(message: EmailMessage, from: string, replyTo: string, apiKey: string) {

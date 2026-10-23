@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { canSendOrderEmails, sendOrderEmails } from "@/lib/email";
+import {
+  canSendOrderEmails,
+  getOrderEmailConfiguration,
+  sendOrderEmails,
+} from "@/lib/email";
 import {
   appendOrderToGoogleSheet,
   canSyncOrdersToGoogleSheet,
@@ -65,6 +69,10 @@ function orderResponse(
 export async function POST(request: NextRequest) {
   if (!originAllowed(request)) {
     return NextResponse.json({ error: "This order origin is not allowed." }, { status: 403 });
+  }
+
+  if (request.headers.get("x-noire-email-config-check") === "1") {
+    console.info("NOIRE email configuration check:", getOrderEmailConfiguration());
   }
 
   let payload: unknown;
@@ -151,8 +159,9 @@ export async function POST(request: NextRequest) {
   const sheetsConfigured = canSyncOrdersToGoogleSheet();
   const emailConfigured = canSendOrderEmails();
   if (!emailConfigured) {
+    const emailConfiguration = getOrderEmailConfiguration();
     console.warn(
-      `Email delivery for order ${order.orderId} was skipped because the email service secret is not configured.`,
+      `Email delivery for order ${order.orderId} was skipped. Missing variables: ${emailConfiguration.missing.join(", ")}.`,
     );
   }
   const [sheetsResult, emailResult] = await Promise.allSettled([
